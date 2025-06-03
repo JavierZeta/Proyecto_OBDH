@@ -16,11 +16,10 @@ CCObsMng::EDROOM_CTX_Top_0::EDROOM_CTX_Top_0(CCObsMng &act,
 	EDROOMcomponent(act),
 	Msg(EDROOMcomponent.Msg),
 	MsgBack(EDROOMcomponent.MsgBack),
-	ObservCtrl(EDROOMcomponent.ObservCtrl),
+	ObsManager(EDROOMcomponent.ObsManager),
 	ObservTimer(EDROOMcomponent.ObservTimer),
 	AttCtrlTimer(EDROOMcomponent.AttCtrlTimer),
-	CAttitudePeriod(0,100000),
-	CImageInterval(0,500000),
+	CImageInterval(0,50000),
 	VNextTimeOut(EDROOMpVarVNextTimeOut)
 {
 }
@@ -30,11 +29,10 @@ CCObsMng::EDROOM_CTX_Top_0::EDROOM_CTX_Top_0(EDROOM_CTX_Top_0 &context):
 	EDROOMcomponent(context.EDROOMcomponent),
 	Msg(context.Msg),
 	MsgBack(context.MsgBack),
-	ObservCtrl(context.ObservCtrl),
+	ObsManager(context.ObsManager),
 	ObservTimer(context.ObservTimer),
 	AttCtrlTimer(context.AttCtrlTimer),
-	CAttitudePeriod(0,100000),
-	CImageInterval(0,500000),
+	CImageInterval(0,50000),
 	VNextTimeOut(context.VNextTimeOut)
 {
 
@@ -66,13 +64,12 @@ bool CCObsMng::EDROOM_CTX_Top_0::EDROOMSearchContextTrans(
 
 	// User-defined Functions   ****************************
 
-void	CCObsMng::EDROOM_CTX_Top_0::FDoActtitudeCtrl()
+void	CCObsMng::EDROOM_CTX_Top_0::FDoAttitudeCtrl()
 
 {
 
  
-pus_service129_do_attitude_ctrl();
- 
+ 	pus_service129_do_attitude_ctrl();
 
 }
 
@@ -82,23 +79,22 @@ void	CCObsMng::EDROOM_CTX_Top_0::FEndObservation()
 
 {
 
-//Take new absloute time reference 
 VNextTimeOut.GetTime();
+ 
 pus_service129_end_observation();
 
 }
 
 
 
-void	CCObsMng::EDROOM_CTX_Top_0::FExecCameraMngTC()
+void	CCObsMng::EDROOM_CTX_Top_0::FExecObsMng_TC()
 
 {
    //Handle Msg->data
-  CDTCHandler & varSObservTC = *(CDTCHandler *)Msg->data;
-	
-	
-		// Data access
-	varSObservTC.ExecTC();
+  CDTCHandler & varSObsMng_TC = *(CDTCHandler *)Msg->data;
+		
+ 
+	varSObsMng_TC.ExecTC();
 
 }
 
@@ -109,15 +105,9 @@ void	CCObsMng::EDROOM_CTX_Top_0::FInit()
 {
    //Define absolute time
   Pr_Time time;
- 
- 
- 
- time.GetTime();
- time+=CAttitudePeriod;
- 
- VNextTimeOut=time;
- 
-pus_service129_init();
+	
+	time.GetTime(); // Get current monotonic time
+	time.Add(0,100000); // Add X sec + Y microsec
    //Program absolute timer 
    AttCtrlTimer.InformAt( time ); 
 }
@@ -130,11 +120,8 @@ void	CCObsMng::EDROOM_CTX_Top_0::FProgAttitudeCtrl()
    //Define absolute time
   Pr_Time time;
  
-	 
- 
-VNextTimeOut+=CAttitudePeriod;
- 
-time=VNextTimeOut;
+	time.GetTime(); // Get current monotonic time
+	time.Add(0,100000); // Add X sec + Y microsec
    //Program absolute timer 
    AttCtrlTimer.InformAt( time ); 
 }
@@ -146,8 +133,8 @@ void	CCObsMng::EDROOM_CTX_Top_0::FProgTakeImage()
 {
    //Define interval
   Pr_Time interval;
-	
- interval=CImageInterval;
+ 
+	interval=CImageInterval;
    //Program relative timer 
    ObservTimer.InformIn( interval ); 
 }
@@ -178,7 +165,6 @@ bool	CCObsMng::EDROOM_CTX_Top_0::GLastImage()
 
 {
 
- 
 return pus_service129_is_last_image();
 
 }
@@ -211,7 +197,8 @@ return pus_service129_is_observation_ready();
 
 CCObsMng::EDROOM_SUB_Top_0::EDROOM_SUB_Top_0 (CCObsMng&act):
 		EDROOM_CTX_Top_0(act,
-			VNextTimeOut)
+			VNextTimeOut),
+		VNextTimeOut(0)
 {
 
 }
@@ -242,40 +229,33 @@ void CCObsMng::EDROOM_SUB_Top_0::EDROOMBehaviour()
 				//Next State is Standby
 				edroomNextState = Standby;
 				break;
-			//Next Transition is ExecTC
-			case (ExecTC):
-				//Msg->Data Handling 
-				FExecCameraMngTC();
-				//Next State is Standby
-				edroomNextState = Standby;
-				break;
-			//To Choice Point DoAttCtrl
-			case (DoAttCtrl):
+			//To Choice Point DoAttitudeCtrl
+			case (DoAttitudeCtrl):
 
 				//Execute Action 
-				FDoActtitudeCtrl();
+				FDoAttitudeCtrl();
 				//Evaluate Branch ToObservation
 				if( GReadyToObservation() )
 				{
 					//Execute Action 
 					FToObservation();
 
-					//Branch taken is DoAttCtrl_ToObservation
+					//Branch taken is DoAttitudeCtrl_ToObservation
 					edroomCurrentTrans.localId =
-						DoAttCtrl_ToObservation;
+						DoAttitudeCtrl_ToObservation;
 
 					//Next State is Observation
 					edroomNextState = Observation;
 				 } 
-				//Default Branch ToStandBy
+				//Default Branch ProgAttitudeCtrl
 				else
 				{
 					//Execute Action 
 					FProgAttitudeCtrl();
 
-					//Branch taken is DoAttCtrl_ToStandBy
+					//Branch taken is DoAttitudeCtrl_ProgAttitudeCtrl
 					edroomCurrentTrans.localId =
-						DoAttCtrl_ToStandBy;
+						DoAttitudeCtrl_ProgAttitudeCtrl;
 
 					//Next State is Standby
 					edroomNextState = Standby;
@@ -286,31 +266,38 @@ void CCObsMng::EDROOM_SUB_Top_0::EDROOMBehaviour()
 
 				//Execute Action 
 				FTakeImage();
-				//Evaluate Branch LastImage
+				//Evaluate Branch lastimage
 				if( GLastImage() )
 				{
 					//Execute Actions 
 					FEndObservation();
 					FProgAttitudeCtrl();
 
-					//Branch taken is TakeImage_LastImage
+					//Branch taken is TakeImage_lastimage
 					edroomCurrentTrans.localId =
-						TakeImage_LastImage;
+						TakeImage_lastimage;
 
 					//Next State is Standby
 					edroomNextState = Standby;
 				 } 
-				//Default Branch NextImage
+				//Default Branch NoLAstImage
 				else
 				{
 
-					//Branch taken is TakeImage_NextImage
+					//Branch taken is TakeImage_NoLAstImage
 					edroomCurrentTrans.localId =
-						TakeImage_NextImage;
+						TakeImage_NoLAstImage;
 
 					//Next State is Observation
 					edroomNextState = Observation;
 				 } 
+				break;
+			//Next Transition is Exec_obsv
+			case (Exec_obsv):
+				//Msg->Data Handling 
+				FExecObsMng_TC();
+				//Next State is Standby
+				edroomNextState = Standby;
 				break;
 		}
 
@@ -324,18 +311,18 @@ void CCObsMng::EDROOM_SUB_Top_0::EDROOMBehaviour()
 				edroomCurrentTrans=EDROOMIArrival();
 				break;
 
-				//Go to the state Standby
-			case (Standby):
-				//Arrival to state Standby
-				edroomCurrentTrans=EDROOMStandbyArrival();
-				break;
-
 				//Go to the state Observation
 			case (Observation):
 				//Execute Entry Action 
 				FProgTakeImage();
 				//Arrival to state Observation
 				edroomCurrentTrans=EDROOMObservationArrival();
+				break;
+
+				//Go to the state Standby
+			case (Standby):
+				//Arrival to state Standby
+				edroomCurrentTrans=EDROOMStandbyArrival();
 				break;
 
 		}
@@ -383,71 +370,6 @@ TEDROOMTransId CCObsMng::EDROOM_SUB_Top_0::EDROOMIArrival()
 
 	// ***********************************************************************
 
-	// Leaf SubState  Standby
-
-	// ***********************************************************************
-
-
-
-TEDROOMTransId CCObsMng::EDROOM_SUB_Top_0::EDROOMStandbyArrival()
-{
-
-	TEDROOMTransId edroomCurrentTrans;
-
-	bool edroomValidMsg=false;
-
-	do
-	{
-
-		EDROOMNewMessage ();
-
-		switch(Msg->signal)
-		{
-
-			case (SObservTC): 
-
-				 if (*Msg->GetPInterface() == ObservCtrl)
-				{
-
-					//Next transition is  ExecTC
-					edroomCurrentTrans.localId= ExecTC;
-					edroomCurrentTrans.distanceToContext = 0;
-					edroomValidMsg=true;
-				 }
-
-				break;
-
-			case (EDROOMSignalTimeout): 
-
-				 if (*Msg->GetPInterface() == AttCtrlTimer)
-				{
-
-					//Next transition is  DoAttCtrl
-					edroomCurrentTrans.localId = DoAttCtrl;
-					edroomCurrentTrans.distanceToContext = 0 ;
-					edroomValidMsg=true;
-				 }
-
-				break;
-
-		};
-
-		if (false == edroomValidMsg)
-		{
-			 edroomValidMsg = EDROOMSearchContextTrans(edroomCurrentTrans);
-
-		}
-
-	} while (false == edroomValidMsg);
-
-	return(edroomCurrentTrans);
-
-}
-
-
-
-	// ***********************************************************************
-
 	// Leaf SubState  Observation
 
 	// ***********************************************************************
@@ -477,6 +399,71 @@ TEDROOMTransId CCObsMng::EDROOM_SUB_Top_0::EDROOMObservationArrival()
 					//Next transition is  TakeImage
 					edroomCurrentTrans.localId = TakeImage;
 					edroomCurrentTrans.distanceToContext = 0 ;
+					edroomValidMsg=true;
+				 }
+
+				break;
+
+		};
+
+		if (false == edroomValidMsg)
+		{
+			 edroomValidMsg = EDROOMSearchContextTrans(edroomCurrentTrans);
+
+		}
+
+	} while (false == edroomValidMsg);
+
+	return(edroomCurrentTrans);
+
+}
+
+
+
+	// ***********************************************************************
+
+	// Leaf SubState  Standby
+
+	// ***********************************************************************
+
+
+
+TEDROOMTransId CCObsMng::EDROOM_SUB_Top_0::EDROOMStandbyArrival()
+{
+
+	TEDROOMTransId edroomCurrentTrans;
+
+	bool edroomValidMsg=false;
+
+	do
+	{
+
+		EDROOMNewMessage ();
+
+		switch(Msg->signal)
+		{
+
+			case (EDROOMSignalTimeout): 
+
+				 if (*Msg->GetPInterface() == AttCtrlTimer)
+				{
+
+					//Next transition is  DoAttitudeCtrl
+					edroomCurrentTrans.localId = DoAttitudeCtrl;
+					edroomCurrentTrans.distanceToContext = 0 ;
+					edroomValidMsg=true;
+				 }
+
+				break;
+
+			case (SObsMng_TC): 
+
+				 if (*Msg->GetPInterface() == ObsManager)
+				{
+
+					//Next transition is  Exec_obsv
+					edroomCurrentTrans.localId= Exec_obsv;
+					edroomCurrentTrans.distanceToContext = 0;
 					edroomValidMsg=true;
 				 }
 

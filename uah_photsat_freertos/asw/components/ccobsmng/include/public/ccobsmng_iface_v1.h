@@ -1,5 +1,5 @@
-#ifndef CCTCMANAGER_H_
-#define CCTCMANAGER_H_
+#ifndef CCOBSMNG_H_
+#define CCOBSMNG_H_
 
 //******************************************************************************
 // EDROOM Service Library
@@ -11,42 +11,34 @@
 //******************************************************************************
 // Data Classes
 
-#include <public/cdtcacceptreport_iface_v1.h>
-#include <public/cdtcexecctrl_iface_v1.h>
 #include <public/cdtchandler_iface_v1.h>
-#include <public/cdtcmemdescriptor_iface_v1.h>
-#include <public/cdevaction_iface_v1.h>
 
 
 //******************************************************************************
 // Required software interfaces
 
-#include <public/sc_channel_drv_v1.h>
 #include <public/pus_services_iface_v1.h>
 
 
 /**
- * \class   CCTCManager
+ * \class   CCObsMng
  *
  */
-class CCTCManager: public CEDROOMComponent {
+class CCObsMng: public CEDROOMComponent {
 
 public:
 
 	/**
-	 * \enum TEDROOMCCTCManagerSignal
+	 * \enum TEDROOMCCObsMngSignal
 	 * \brief Component Signal Enum Type
 	 *
 	 */
-	 enum TEDROOMCCTCManagerSignal { EDROOMSignalTimeout, 
+	 enum TEDROOMCCObsMngSignal { EDROOMSignalTimeout, 
 							EDROOMSignalDestroy, 
-							EDROOMIRQsignal, 
-							SBKGTC, 
-							SHK_FDIR_TC, 
-							SEvAction };
+							SObsMng_TC };
 
 	/**
-	 * \class CCTCManager::CEDROOMMemory
+	 * \class CCObsMng::CEDROOMMemory
 	 * \brief Component Memory
 	 *
 	 */
@@ -57,16 +49,22 @@ public:
 			//!Array of Message Queue Heads, one for each priority
 			CEDROOMQueue::CQueueHead QueueHeads[EDROOMprioMINIMUM+1];
 
-	// ********************************************************************
-	// ******************* Component Message Data Pools *******************
-	// ********************************************************************
+			//************ Component Timing Service Memory************
 
-		public:
+			//!Component Timing Service Timer Info Memory
+			CEDROOMTimerInfo TimerInf[5];
+			//!Component Timing Service Timer Info Marks Memory
+			bool TimerInfMarks[5];
+			//!Component Timing Service TimeOut Messages Memory
+			CEDROOMTimeOutMessage TimeOutMsgs[5];
+			//!Component Timing Service TimeOut Messages Marks Memory
+			bool TimeOutMsgsMarks[5];
 
-			//! CDTCHandler Data Pool Memory
-			CDTCHandler	poolCDTCHandler[10+1];
-			//! CDTCHandler Data Pool Marks Memory
-			bool	poolMarkCDTCHandler[10];
+		public: 
+
+			//!Component Timing Service Memory Object
+			CEDROOMTimingMemory TimingMemory;
+
 
 
 			/** \brief This function is used for setting the Component Memory
@@ -92,55 +90,22 @@ public:
 	//******************  Component Communication Ports *******************
 	// ********************************************************************
 
-	//! BKGExecCtrl Component Port
-	CEDROOMInterface	BKGExecCtrl;
-	//! HK_FDIRCtrl Component Port
-	CEDROOMInterface	HK_FDIRCtrl;
+	//! ObsManager Component Port
+	CEDROOMInterface	ObsManager;
 
 
 	// ********************************************************************
-	// ************************* Component IRQ Handling *******************
+	// ********************  Timing Service Interface *********************
 	// ********************************************************************
 
-	// ********************************
-	// Handling IRQ vector 18
+	//! Timing Service Access Point. It is common to all timing ports.
+	CEDROOMTimingSAP	 EDROOMtimingSAP;
 
-	//! Event for trigger the bottom half associated to the IRQ vector 18
-	static Pr_IRQEvent	EDROOMEventIRQ18;
-	//! Binary Semaphore for signal the end of the bottom half of the IRQ vector 18
-	static Pr_SemaphoreBin	EDROOMSemEndIRQ18;
-	//! IRQ Handler for the IRQ vector 18
-	static Pr_IRQHandler_RetType	EDROOMIRQ18Handler(void);
-	//! Top Half Function for IRQ Handler  18
-	static void	EDROOMIRQ18HandlerTopHalfFunction(void);
-	//! Idle IRQ Handler for the IRQ vector 18
-	static Pr_IRQHandler_RetType	EDROOMIRQ18IdleHandler(void);
-	//! Bottom Half Task Function for the IRQ vector 18
-	static Pr_TaskRV_t 	EDROOMIRQ18BottomHalfTask(Pr_TaskP_t);
-	//! Bottom Half Pr_Task Object for the IRQ vector 18
-	Pr_Task 	EDROOMIRQ18BottomHalfT;
-	//! Component Port associated to the IRQ vector 18
-	static CEDROOMIRQInterface	RxTC;
-	//! Global variable required for the botton half of the IRQ vector 18
-	static CDTCMemDescriptor	EDROOMVarIRQ18;
-	/**
-	 * \class CEDROOMPOOLIRQ18CDTCMemDescriptor
-	 * \brief Data Pool Class required for the botton half of the IRQ vector 18
-	 *
-	 */
-	class CEDROOMPOOLIRQ18CDTCMemDescriptor:public CEDROOMProtectedMemoryPool {
-		//! Data Pool Memory
-		CDTCMemDescriptor mem[10+1];
-		//! Data Pool Memory Marks
-		bool marks[10];
-		public:
-		//! Constructor
-		CEDROOMPOOLIRQ18CDTCMemDescriptor():CEDROOMProtectedMemoryPool(10,mem,marks, sizeof(CDTCMemDescriptor)){}
-		//! Function for allocating a data from the pool
-		CDTCMemDescriptor	* AllocData(){ return ( CDTCMemDescriptor	* ) CEDROOMProtectedMemoryPool::AllocData();}
-	};
-	 //!Data Pool required for the botton half of the IRQ vector 18
-	static CEDROOMPOOLIRQ18CDTCMemDescriptor	EDROOMPoolIRQ18;
+
+	//! ObservTimer Timing Port
+	CEDROOMTimingInterface	ObservTimer;
+	//! AttCtrlTimer Timing Port
+	CEDROOMTimingInterface	AttCtrlTimer;
 
 
 
@@ -152,7 +117,7 @@ public:
 
 
 	//! Constructor
-	CCTCManager(TEDROOMComponentID id, TEDROOMUInt32 roomNumMaxMens, TEDROOMPriority roomtaskPrio, 
+	CCObsMng(TEDROOMComponentID id, TEDROOMUInt32 roomNumMaxMens, TEDROOMPriority roomtaskPrio, 
 		TEDROOMStackSizeType roomStack, CEDROOMMemory * pActorMemory );
 
 
@@ -203,22 +168,19 @@ public:
 	protected:
 
 	/**
-	 * \enum TEDROOMCCTCManagerSignal
+	 * \enum TEDROOMCCObsMngSignal
 	 * \brief Component Signal Enum Type
 	 *
 	 */
-	enum TEDROOMCCTCManagerSignal { EDROOMSignalTimeout,
+	enum TEDROOMCCObsMngSignal { EDROOMSignalTimeout,
 		EDROOMSignalDestroy,
-		EDROOMIRQsignal,
-		SBKGTC,
-		SHK_FDIR_TC,
-		SEvAction };
+		SObsMng_TC };
 
 
-		friend class CCTCManager;
+		friend class CCObsMng;
 
 		//!component reference
-		CCTCManager &EDROOMcomponent;
+		CCObsMng &EDROOMcomponent;
 
 		//!Current message pointer reference
 		CEDROOMMessage * &Msg;
@@ -227,54 +189,40 @@ public:
 		CEDROOMMessage * &MsgBack;
 
 		//!Component ports
-		CEDROOMInterface & BKGExecCtrl;
-		CEDROOMInterface & HK_FDIRCtrl;
-		CEDROOMIRQInterface & RxTC;
+		CEDROOMInterface & ObsManager;
+		CEDROOMTimingInterface & ObservTimer;
+		CEDROOMTimingInterface & AttCtrlTimer;
 
 
 		//! State Identifiers
 		enum TEDROOMStateID{I,
-			Ready,
-			Reboot,
-			ValidTC};
+			Observation,
+			Standby};
 
 		//!Transition Identifiers
 		enum TEDROOMTransitionID{Init,
-			NewRxTC,
-			NewRxTC_Accepted,
-			NewRxTC_NotAccepted,
-			HandleTC,
-			HandleTC_ToReboot,
-			HandleTC_FwdHK_FDIRTC,
-			HandleTC_FwdToBKGTCExec,
-			HandleTC_ExecPrioTC,
-			NewEvAction,
+			DoAttitudeCtrl,
+			DoAttitudeCtrl_ToObservation,
+			DoAttitudeCtrl_ProgAttitudeCtrl,
+			TakeImage,
+			TakeImage_lastimage,
+			TakeImage_NoLAstImage,
+			Exec_obsv,
 			EDROOMMemoryTrans };
 
+		//!Constants
+		const Pr_Time CImageInterval;
 
 
 		//!Variables
-		CDTCAcceptReport &VAcceptReport;
-		CDTCHandler &VCurrentTC;
-		CDTCExecCtrl &VTCExecCtrl;
+		Pr_Time &VNextTimeOut;
 
 
-		// Pools *************************************************
-
-		class CEDROOMPOOLCDTCHandler:public CEDROOMProtectedMemoryPool {
-			public:
-			CEDROOMPOOLCDTCHandler(TEDROOMUInt32 elemCount,CDTCHandler *pMem, bool *pMarks);
-			CDTCHandler	* AllocData();
-		};
-		CEDROOMPOOLCDTCHandler	& EDROOMPoolCDTCHandler;
 
 
 		//!Constructor
-		EDROOM_CTX_Top_0 (CCTCManager &act,
-				CDTCAcceptReport & EDROOMpVarVAcceptReport,
-				CDTCHandler & EDROOMpVarVCurrentTC,
-				CDTCExecCtrl & EDROOMpVarVTCExecCtrl,
-				CEDROOMPOOLCDTCHandler & EDROOMpPoolCDTCHandler );
+		EDROOM_CTX_Top_0 (CCObsMng &act,
+				Pr_Time & EDROOMpVarVNextTimeOut );
 
 		//!Copy constructor
 		EDROOM_CTX_Top_0 (EDROOM_CTX_Top_0 &context);
@@ -307,27 +255,17 @@ public:
 		/**
 		 * \brief  
 		 */
-		void	FExecTC();
+		void	FDoAttitudeCtrl();
 
 		/**
 		 * \brief  
 		 */
-		void	FFwdHK_FDIRTC();
+		void	FEndObservation();
 
 		/**
 		 * \brief  
 		 */
-		void	FFwdToBKGTCExec();
-
-		/**
-		 * \brief  
-		 */
-		void	FGetEvAction();
-
-		/**
-		 * \brief  
-		 */
-		void	FGetTC();
+		void	FExecObsMng_TC();
 
 		/**
 		 * \brief  
@@ -337,42 +275,32 @@ public:
 		/**
 		 * \brief  
 		 */
-		void	FMngTCAcceptation();
+		void	FProgAttitudeCtrl();
 
 		/**
 		 * \brief  
 		 */
-		void	FMngTCRejection();
+		void	FProgTakeImage();
 
 		/**
 		 * \brief  
 		 */
-		void	FReboot();
+		void	FTakeImage();
+
+		/**
+		 * \brief Opolo70
+		 */
+		void	FToObservation();
 
 		/**
 		 * \brief  
 		 */
-		void	FTCExecCtrl();
+		bool	GLastImage();
 
 		/**
-		 * \brief  
+		 * \brief Opolo70
 		 */
-		bool	GAcceptTC();
-
-		/**
-		 * \brief  
-		 */
-		bool	GFwdToBKGTCExec();
-
-		/**
-		 * \brief  
-		 */
-		bool	GFwdToHK_FDIR();
-
-		/**
-		 * \brief  
-		 */
-		bool	GToReboot();
+		bool	GReadyToObservation();
 
 	};
 
@@ -397,19 +325,15 @@ public:
 		EDROOM_CTX_Top_0::TEDROOMStateID edroomNextState;
 
 		//!Variables
-		CDTCAcceptReport VAcceptReport;
-		CDTCHandler VCurrentTC;
-		CDTCExecCtrl VTCExecCtrl;
+		Pr_Time VNextTimeOut;
 
 
-		// Pools**************************************************
-		CEDROOMPOOLCDTCHandler	EDROOMPoolCDTCHandler;
 
 
 	public:
 
 		//! Constructor
-		EDROOM_SUB_Top_0 (CCTCManager &act, CEDROOMMemory *pEDROOMMemory  );
+		EDROOM_SUB_Top_0 (CCObsMng &act );
 
 
 		//! Top Context Behaviour 
@@ -424,33 +348,23 @@ public:
 
 		// ***********************************************************************
 
-		// JoinPoint ValidTC
+		// Leaf SubState Observation
 
 		// ***********************************************************************
 
 
 
-		TEDROOMTransId EDROOMValidTCArrival();
+		TEDROOMTransId EDROOMObservationArrival();
 
 		// ***********************************************************************
 
-		// Leaf SubState Ready
-
-		// ***********************************************************************
-
-
-
-		TEDROOMTransId EDROOMReadyArrival();
-
-		// ***********************************************************************
-
-		// Leaf SubState Reboot
+		// Leaf SubState Standby
 
 		// ***********************************************************************
 
 
 
-		TEDROOMTransId EDROOMRebootArrival();
+		TEDROOMTransId EDROOMStandbyArrival();
 
 	};
 
