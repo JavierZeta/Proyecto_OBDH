@@ -1,6 +1,5 @@
 #include <public/ccobsmng_iface_v1.h>
 
-
 // ***********************************************************************
 
 // class EDROOM_CTX_Top_0
@@ -109,7 +108,7 @@ void	CCObsMng::EDROOM_CTX_Top_0::FInit()
 	
 	time.GetTime(); // Get current monotonic time
 	time+=Pr_Time(0,100000);
-
+ 
 	
    //Program absolute timer 
    AttCtrlTimer.InformAt( time ); 
@@ -124,7 +123,7 @@ void	CCObsMng::EDROOM_CTX_Top_0::FProgAttitudeCtrl()
   Pr_Time time;
  
 	time.GetTime(); // Get current monotonic time
-	time+=Pr_Time(0,100000);
+	time+=Pr_Time(0,200000);
    //Program absolute timer 
    AttCtrlTimer.InformAt( time ); 
 }
@@ -200,8 +199,7 @@ return pus_service129_is_observation_ready();
 
 CCObsMng::EDROOM_SUB_Top_0::EDROOM_SUB_Top_0 (CCObsMng&act):
 		EDROOM_CTX_Top_0(act,
-			VNextTimeOut),
-		VNextTimeOut()
+			VNextTimeOut)
 {
 
 }
