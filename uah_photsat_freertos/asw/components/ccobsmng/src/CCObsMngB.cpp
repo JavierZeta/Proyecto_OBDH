@@ -1,5 +1,6 @@
 #include <public/ccobsmng_iface_v1.h>
 
+
 // ***********************************************************************
 
 // class EDROOM_CTX_Top_0
@@ -199,7 +200,8 @@ return pus_service129_is_observation_ready();
 
 CCObsMng::EDROOM_SUB_Top_0::EDROOM_SUB_Top_0 (CCObsMng&act):
 		EDROOM_CTX_Top_0(act,
-			VNextTimeOut)
+			VNextTimeOut),
+		VNextTimeOut()
 {
 
 }
