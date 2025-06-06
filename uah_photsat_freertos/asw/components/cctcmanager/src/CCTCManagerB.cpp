@@ -106,7 +106,7 @@ void	CCTCManager::EDROOM_CTX_Top_0::FFwdObsMngTc()
  
 		// Complete Data 
 	
-*pSHK_FDIR_TC_Data=VCurrentTC;   
+*pSObsMng_TC_Data=VCurrentTC;   
    //Send message 
    ObsManager.send(SObsMng_TC,pSObsMng_TC_Data,&EDROOMPoolCDTCHandler); 
 }
